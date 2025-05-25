@@ -1,8 +1,7 @@
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
-using Reqnroll.BoDi;
-// MUST USE with ExpectedConditions
 using SeleniumExtras.WaitHelpers;
+using System;
 
 namespace qa_dotnet_cucumber.Pages
 {
@@ -10,40 +9,139 @@ namespace qa_dotnet_cucumber.Pages
     {
         private readonly IWebDriver _driver;
         private readonly WebDriverWait _wait;
-        public IWebDriver Driver => _driver;  
 
         // Locators
-        private readonly By UsernameField = By.Id("username");
-        private readonly By PasswordField = By.Id("password");
-        private readonly By LoginButton = By.CssSelector("button[type='submit']");
-        private readonly By SuccessMessage = By.CssSelector(".flash.success");
+        private const string SignInButton = "//a[@class='item' and text()='Sign In']";
+        private const string EmailField = "//input[@name='email']";
+        private const string PasswordField = "//input[@name='password']";
+        private const string LoginButton = "//button[text()='Login']";
+        private const string Dashboard = "//h3[@class='ui dividing header' and text()='Description']";
 
-        public LoginPage(IWebDriver driver) // Inject IWebDriver directly
+        // Error locators
+        private const string InvalidEmailError = "//div[contains(@class,'prompt') and text()='Please enter a valid email address']";
+        private const string InvalidPasswordError = "//button[@id='submit-btn' and text()='Send Verification Email']";
+        private const string RequiredFieldError = "//div[contains(@class,'prompt') and text()='Please enter a valid email address']";
+
+        // Constructor
+        public LoginPage(IWebDriver driver, int timeoutInSeconds = 10)
         {
             _driver = driver;
-            _wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10)); // 10-second timeout
-        }
-        
-        public void Login(string username, string password)
-        {
-            var usernameElement = _wait.Until(ExpectedConditions.ElementIsVisible(UsernameField));
-            usernameElement.SendKeys(username);
-
-            var passwordElement = _wait.Until(d => d.FindElement(PasswordField));
-            passwordElement.SendKeys(password);
-
-            var loginButtonElement = _wait.Until(ExpectedConditions.ElementToBeClickable(LoginButton));
-            loginButtonElement.Click();
+            _wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(timeoutInSeconds));
         }
 
-        public string GetSuccessMessage()
+        // Navigate to login page
+        public void NavigateToLoginPage(string url = "http://localhost:5003")
         {
-            return _wait.Until(d => d.FindElement(SuccessMessage)).Text;
+            Console.WriteLine($"Navigating to the login page: {url}");
+            _driver.Navigate().GoToUrl(url);
         }
 
-        public bool IsAtLoginPage()
+        // Click Sign In button
+        public void ClickSignInButton()
         {
-            return _driver.Title.Contains("The Internet");
+            try
+            {
+                Console.WriteLine("Waiting for the Sign In button to be clickable...");
+                var signInButton = _wait.Until(ExpectedConditions.ElementToBeClickable(By.XPath(SignInButton)));
+                signInButton.Click();
+                Console.WriteLine("Sign In button clicked.");
+            }
+            catch (WebDriverTimeoutException)
+            {
+                Console.WriteLine("Sign In button was not clickable within the specified time.");
+            }
+        }
+
+        // Enter credentials
+        public void EnterCredentials(string email, string password)
+        {
+            try
+            {
+                Console.WriteLine($"Entering credentials: Email = {email}, Password = [REDACTED]");
+                var emailField = _wait.Until(ExpectedConditions.ElementIsVisible(By.XPath(EmailField)));
+                emailField.Clear();
+                emailField.SendKeys(email);
+
+                var passwordField = _wait.Until(ExpectedConditions.ElementIsVisible(By.XPath(PasswordField)));
+                passwordField.Clear();
+                passwordField.SendKeys(password);
+            }
+            catch (WebDriverTimeoutException)
+            {
+                Console.WriteLine("Failed to locate email or password field within the timeout.");
+            }
+        }
+
+        // Submit login form
+        public void SubmitLogin()
+        {
+            try
+            {
+                Console.WriteLine("Submitting login form...");
+                var loginButton = _wait.Until(ExpectedConditions.ElementToBeClickable(By.XPath(LoginButton)));
+                loginButton.Click();
+            }
+            catch (WebDriverTimeoutException)
+            {
+                Console.WriteLine("Login button was not clickable within the timeout.");
+            }
+        }
+
+        // Check if dashboard is visible after successful login
+        public bool IsDashboardVisible()
+        {
+            Console.WriteLine("Checking if the dashboard is visible...");
+            return IsElementVisible(Dashboard);
+        }
+
+        // Check if invalid email error is displayed
+        public bool IsInvalidEmailErrorDisplayed()
+        {
+            Console.WriteLine("Checking if invalid email error message is visible...");
+            return IsElementVisible(InvalidEmailError);
+        }
+
+        // Check if invalid password error (verification email button) is displayed
+        public bool IsInvalidPasswordErrorDisplayed()
+        {
+            Console.WriteLine("Checking if invalid password error (Send Verification Email button) is visible...");
+            return IsElementVisible(InvalidPasswordError);
+        }
+
+        // Check if required field error message is displayed (assuming it's the same as InvalidEmailError)
+        public bool IsRequiredFieldErrorMessageDisplayed()
+        {
+            Console.WriteLine("Checking if required field error message is visible...");
+            return IsElementVisible(RequiredFieldError);
+        }
+
+        // Helper method to check if an element is visible
+        private bool IsElementVisible(string xpath)
+        {
+            try
+            {
+                Console.WriteLine($"Checking visibility for element with XPath: {xpath}");
+                _wait.Until(ExpectedConditions.ElementIsVisible(By.XPath(xpath)));
+                return true;
+            }
+            catch (WebDriverTimeoutException)
+            {
+                Console.WriteLine($"Element with XPath: {xpath} is not visible within the timeout.");
+                return false;
+            }
+            catch (NoSuchElementException)
+            {
+                Console.WriteLine($"Element with XPath: {xpath} not found.");
+                return false;
+            }
+        }
+
+        public void Login(string email, string password)
+        {
+            NavigateToLoginPage();
+            ClickSignInButton();
+            EnterCredentials(email, password);
+            SubmitLogin();
         }
     }
 }

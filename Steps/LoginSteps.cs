@@ -1,70 +1,102 @@
 using OpenQA.Selenium;
 using Reqnroll;
-using NUnit.Framework;
-using OpenQA.Selenium.Support.UI;
 using qa_dotnet_cucumber.Pages;
+using System;
 
 namespace qa_dotnet_cucumber.Steps
 {
     [Binding]
+    [Scope(Feature = "Login Functionality")]
     public class LoginSteps
     {
+        private readonly IWebDriver _driver;
         private readonly LoginPage _loginPage;
-        private readonly NavigationHelper _navigationHelper;
 
-        public LoginSteps(LoginPage loginPage, NavigationHelper navigationHelper)
+        public LoginSteps(ScenarioContext context)
         {
-            _loginPage = loginPage;
-            _navigationHelper = navigationHelper;
+            _driver = (IWebDriver)context["driver"];
+            _loginPage = new LoginPage(_driver);
         }
 
-        [Given("I am on the login page")]
-        public void GivenIAmOnTheLoginPage()
+        [Given(@"I navigate to the login page")]
+        public void GivenINavigateToTheLoginPage()
         {
-            _navigationHelper.NavigateTo("/login");
-            Assert.That(_loginPage.IsAtLoginPage(), Is.True, "Should be on the login page");
+            _loginPage.NavigateToLoginPage();
         }
 
-        [When("I enter valid credentials")]
-        public void WhenIEnterValidCredentials()
+        [Given(@"I click the sign in button")]
+        public void GivenIClickTheSignInButton()
         {
-            _loginPage.Login("tomsmith", "SuperSecretPassword!");
+            _loginPage.ClickSignInButton();
         }
 
-        [When("I enter an invalid username and valid password")]
-        public void WhenIEnterAnInvalidUsernameAndValidPassword()
+        [When(@"I enter valid username and password")]
+        public void WhenIEnterValidUsernameAndPassword()
         {
-            _loginPage.Login("invaliduser", "SuperSecretPassword!");
+            _loginPage.EnterCredentials("rose@gmail.com", "rose123");
         }
 
-        [When("I enter a valid username and invalid password")]
-        public void WhenIEnterAValidUsernameAndInvalidPassword()
+        [When(@"I submit the login form")]
+        public void WhenISubmitTheLoginForm()
         {
-            _loginPage.Login("tomsmith", "wrongpassword");
+            _loginPage.SubmitLogin();
         }
 
-        [When("I enter empty credentials")]
-        public void WhenIEnterEmptyCredentials()
+        [Then(@"I should be logged in and see the dashboard")]
+        public void ThenIShouldBeLoggedInAndSeeTheDashboard()
         {
-            _loginPage.Login("", "");
+            if (!_loginPage.IsDashboardVisible())
+            {
+                throw new Exception("Dashboard is not visible after login.");
+            }
         }
 
-        [Then("I should see the secure area")]
-        public void ThenIShouldSeeTheSecureArea()
+        // Scenario 2: Failed login with invalid email address
+        [When(@"I enter invalid email and valid password")]
+        public void WhenIEnterInvalidEmail()
         {
-            var successMessage = _loginPage.GetSuccessMessage();
-            Assert.That(successMessage, Does.Contain("You logged into a secure area!"), "Should see successful login message");
+            _loginPage.EnterCredentials("invalidemail", "rose123");
         }
 
-        [Then("I should see an error message")]
-        public void ThenIShouldSeeAnErrorMessage()
+        [Then(@"I should see an incorrect email error message")]
+        public void ThenIShouldSeeAnIncorrectEmailMessage()
         {
-            // Use LoginPage's driver to wait for and verify the error message
-            var wait = new WebDriverWait(_loginPage.Driver, TimeSpan.FromSeconds(10));
-            var errorMessageElement = wait.Until(d => d.FindElement(By.CssSelector(".flash.error")));
-            var errorMessage = errorMessageElement.Text;
-            Assert.That(errorMessage, Does.Match("Your username is invalid!|Your password is invalid!|Username is required"), 
-                "Should see an appropriate error message");
+            if (!_loginPage.IsInvalidEmailErrorDisplayed())
+            {
+                throw new Exception("Invalid email error message is not displayed.");
+            }
+        }
+
+        // Scenario 3: Failed login with invalid password
+        [When(@"I enter valid email and invalid password")]
+        public void WhenIEnterInvalidPassword()
+        {
+            _loginPage.EnterCredentials("rose@gmail.com", "wrongpassword");
+        }
+
+        [Then(@"I should see an incorrect password error message")]
+        public void ThenIShouldSeeAnIncorrectPasswordErrorMessage()
+        {
+            if (!_loginPage.IsInvalidPasswordErrorDisplayed())
+            {
+                throw new Exception("Invalid password error message is not displayed.");
+            }
+        }
+
+        // Scenario 4: Failed login with empty credentials
+        [When(@"I enter empty username and password")]
+        public void WhenIEnterEmptyUsernameAndPassword()
+        {
+            _loginPage.EnterCredentials("", "");
+        }
+
+        [Then(@"I should see a required field error message")]
+        public void ThenIShouldSeeARequiredFieldErrorMessage()
+        {
+            if (!_loginPage.IsRequiredFieldErrorMessageDisplayed())
+            {
+                throw new Exception("Required field error message is not displayed.");
+            }
         }
     }
 }

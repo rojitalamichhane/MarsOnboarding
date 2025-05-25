@@ -1,0 +1,46 @@
+version: '3'
+
+services:
+  mars.web.app:
+    build:  
+      context: .
+      dockerfile: App/Mars.App.Web/Dockerfile
+    image: mvpstudionz/mars.web.app:latest
+    ports:
+      - '5003:5000'
+
+  mars.service.identity:
+    build:
+      context: .
+      dockerfile: Mars.Services.Identity/Dockerfile
+    image: mvpstudionz/mars.service.identity:latest
+    ports:
+      - '60968:60968'
+  
+  mars.service.listing:
+    build:
+      context: .
+      dockerfile: Mars.Services.Listing/Dockerfile
+    image: mvpstudionz/mars.service.listing:latest
+    ports:
+      - '51689:51689'
+
+  mars.service.profile:
+    build:
+      context: .
+      dockerfile: Mars.Services.Profile/Dockerfile
+    image: mvpstudionz/mars.service.profile:latest
+    ports:
+      - '60190:60190'
+
+  mongodb:
+    image: mongo:latest
+    container_name: mars-mongodb
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb-data:/data/db
+
+volumes:
+  mongodb-data:
+    driver: local
