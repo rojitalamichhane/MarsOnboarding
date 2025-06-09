@@ -1,7 +1,7 @@
 {
   "Browser": {
     "Type": "Chrome",
-    "Headless": false,
+    "Headless": true,
     "TimeoutSeconds": 30
   },
   "Report": {

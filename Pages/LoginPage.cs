@@ -23,10 +23,10 @@ namespace qa_dotnet_cucumber.Pages
         private const string RequiredFieldError = "//div[contains(@class,'prompt') and text()='Please enter a valid email address']";
 
         // Constructor
-        public LoginPage(IWebDriver driver, int timeoutInSeconds = 10)
+        public LoginPage(IWebDriver driver, int timeoutInSeconds = 15)
         {
             _driver = driver;
-            _wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(timeoutInSeconds));
+            _wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10));
         }
 
         // Navigate to login page
@@ -142,6 +142,11 @@ namespace qa_dotnet_cucumber.Pages
             ClickSignInButton();
             EnterCredentials(email, password);
             SubmitLogin();
+        }
+
+        public bool IsAtLoginPage()
+        {
+            return _driver.Title.Contains("Home");
         }
     }
 }

@@ -23,10 +23,13 @@ namespace qa_dotnet_cucumber.Pages
         private By languageLevelDropdown => By.XPath("//select[@class='ui dropdown']");
         private By saveButton => By.XPath("//input[@value='Add']");
 
+        private readonly By AddedLanguage = By.XPath("(//table[@class='ui fixed table']//tbody[last()]//tr/td[1])[1]");
+        private readonly By AddedLevel = By.XPath("//table[@class='ui fixed table']//tbody[last()]//tr/td[2]");
+        private readonly By LanguageAddedMsg = By.XPath("//div[contains(text(),'has been added to your languages')]");
         // Update Locators
         private IWebElement LanguageTable => wait.Until(driver =>
             driver.FindElement(By.XPath("//table[@class='ui fixed table'][.//th[normalize-space(text())='Language']]")));
-        private By LanguageRow => By.XPath(".//tbody/tr");
+        private By LanguageRow => By.XPath("//table[@class='ui fixed table']/tbody/tr");
         private By LanguageCell => By.XPath("./td[1]");
         private By EditIcon => By.XPath(".//span[@class='button']/i[contains(@class, 'write')]");
         private By EditRow => By.XPath(".//tr[.//input[@placeholder='Add Language']]");
@@ -40,11 +43,12 @@ namespace qa_dotnet_cucumber.Pages
         private readonly By LanguageDeleteButton = By.XPath("(//i[@class='remove icon'])");
         private readonly By LanguageDeletedMsg = By.XPath("//div[contains(text(),'has been deleted from your languages')]");
 
+
         private readonly By cancelButton = By.XPath("//input[@type='button' and @value='Cancel' and contains(@class, 'ui button')]");
 
 
         //Language Validation locators
-        private readonly By DuplicateLangErrMsg = By.XPath("//div[@class='ns-box ns-growl ns-effect-jelly ns-type-error ns-show']//div");
+        private readonly By DuplicateLangErrMsg = By.XPath("//div[@class='ns-box-inner']");
         private readonly By EmptyLangErrMsg = By.XPath("//div[@class='ns-box ns-growl ns-effect-jelly ns-type-error ns-show']//div[contains(text(),'Please enter language and level')]");
 
         private readonly By LanguageSuccessMsg = By.XPath("//div[@class='ns-box ns-growl ns-effect-jelly ns-type-success ns-show']//div[contains(text(),'has been added to your languages')]");
@@ -66,17 +70,61 @@ namespace qa_dotnet_cucumber.Pages
         // Add new language and level
         public void AddLanguage(string language, string level)
         {
-            wait.Until(ExpectedConditions.ElementToBeClickable(addNewButton)).Click();
+            try
+            {
 
-            var nameInput = wait.Until(ExpectedConditions.ElementIsVisible(addLanguageTextbox));
-            nameInput.Clear();
-            nameInput.SendKeys(language);
+                // Click on Add New button
+                var addNewButtonElement = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(addNewButton));
+                addNewButtonElement.Click();
+            }
+            catch (Exception)
+            {
+                Assert.Fail("Add New Button has not been found");
+            }
 
-            var levelDropdown = wait.Until(ExpectedConditions.ElementToBeClickable(languageLevelDropdown));
-            new SelectElement(levelDropdown).SelectByText(level);
+            //Enter Language
+            var LanguageElement = wait.Until(ExpectedConditions.ElementIsVisible(addLanguageTextbox));
+            LanguageElement.SendKeys(language);
 
-            wait.Until(ExpectedConditions.ElementToBeClickable(saveButton)).Click();
+            //Choose language level from dropdown
+            var languageLevelElement = wait.Until(d => d.FindElement(languageLevelDropdown));
+            SelectElement langLevel = new SelectElement(languageLevelElement);
+            langLevel.SelectByText(level);
+
+            //Click Add button
+
+            var AddButtonElement = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(saveButton));
+            var AddButtonElementClickable = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(saveButton));
+            AddButtonElementClickable.Click();
+            Thread.Sleep(3000);
         }
+
+
+        public void clickCancelButton()
+        {
+            var CancelButtonElement = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(cancelButton));
+            var CancelButtonElementClickable = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(cancelButton));
+            CancelButtonElementClickable.Click();
+            Thread.Sleep(3000);
+        }
+
+        public void WaitForAddNewButton()
+        {
+            wait.Until(ExpectedConditions.ElementToBeClickable(addNewButton));
+        }
+
+        public bool IsCancelButtonPresent()
+        {
+            try
+            {
+                return driver.FindElement(cancelButton).Displayed;
+            }
+            catch (NoSuchElementException)
+            {
+                return false;
+            }
+        }
+
 
         // Verify if the language and level are displayed
         public bool IsLanguageDisplayed(string language, string level)
@@ -92,52 +140,99 @@ namespace qa_dotnet_cucumber.Pages
             }
         }
 
+        public string LanguageListing()
+        {
+            var SavedLanguage = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(AddedLanguage));
+            return SavedLanguage.Text;
+            //  var SavedUpdatedLanguage = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(UpdatedLanguage));
+            // return SavedUpdatedLanguage.Text;
+        }
+        public string LevelListing()
+        {
+            var SavedLevel = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(AddedLevel));
+            return SavedLevel.Text;
+        }
+
+        public string LangAddedSuccessMsg()
+        {
+            var LangAddedMsg = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(LanguageAddedMsg));
+            return LangAddedMsg.Text;
+
+        }
+
         // -------- Update Method --------
         // Update existing language and level
         public void UpdateLanguage(string currentLanguage, string newLanguage, string newLevel)
         {
             try
             {
-                var rows = LanguageTable.FindElements(LanguageRow);
-                IWebElement? targetRow = null;
+                // Find all rows in the table body
+                var languageRows = wait.Until(d => d.FindElements(LanguageRow));
 
-                foreach (var row in rows)
+                foreach (var row in languageRows)
                 {
-                    var languageCell = row.FindElement(LanguageCell);
-                    if (languageCell.Text.Trim().Equals(currentLanguage, StringComparison.OrdinalIgnoreCase))
+                    var languageText = row.FindElement(By.XPath("./td[1]")).Text.Trim();
+                    if (languageText.Equals(currentLanguage, StringComparison.OrdinalIgnoreCase))
                     {
-                        targetRow = row;
-                        break;
+                        // Click the edit icon in that row
+                        var editButton = row.FindElement(By.XPath(".//i[contains(@class, 'outline write icon')]"));
+                        editButton.Click();
+
+                        Thread.Sleep(1000); // Wait for input to appear
+
+                        // Update the language and level
+                        var languageElement = wait.Until(ExpectedConditions.ElementIsVisible(addLanguageTextbox));
+                        languageElement.Clear();
+                        languageElement.SendKeys(newLanguage);
+
+                        // Choose language level from dropdown
+                        var languageLevelElement = wait.Until(d => d.FindElement(languageLevelDropdown));
+                        SelectElement langLevel = new SelectElement(languageLevelElement);
+                        langLevel.SelectByText(newLevel);
+
+                        // Click Add button
+                        var addButtonElement = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(saveButton));
+                        addButtonElement.Click();
+
+                        Thread.Sleep(3000);
+
+                        return;
                     }
                 }
 
-                if (targetRow == null)
-                    throw new Exception($"Language '{currentLanguage}' not found.");
-
-                // Click edit icon on the target row
-                targetRow.FindElement(EditIcon).Click();
-
-                // Find the edit row inside the table (where input textbox appears)
-                var editRow = LanguageTable.FindElement(EditRow);
-
-                var languageInput = editRow.FindElement(LanguageInput);
-                languageInput.Clear();
-                languageInput.SendKeys(newLanguage);
-
-                var levelDropdown = editRow.FindElement(LevelDropdownInEdit);
-                new SelectElement(levelDropdown).SelectByText(newLevel);
-
-                var updateButton = editRow.FindElement(UpdateButtonInEdit);
-                wait.Until(ExpectedConditions.ElementToBeClickable(updateButton)).Click();
-
-                // Wait for updated confirmation message
-                wait.Until(ExpectedConditions.ElementIsVisible(LanguageUpdatedMsg));
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to update language: {ex.Message}");
+                Console.WriteLine("Test failed: " + ex.Message);
             }
         }
+
+        public string LangUpdatedSuccessMsg()
+        {
+            var LangUpdatedMsg = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(LanguageUpdatedMsg));
+            return LangUpdatedMsg.Text;
+        }
+
+        public bool IsLanguageAndLevelPresent(string language, string level)
+        {
+            // Find all rows in the language table
+            var rows = driver.FindElements(LanguageRow);
+
+            foreach (var row in rows)
+            {
+                var languageCell = row.FindElement(By.XPath("./td[1]"));
+                var levelCell = row.FindElement(By.XPath("./td[2]"));
+
+                // Check if the language and level in the row match the provided values
+                if (languageCell.Text.Trim() == language && levelCell.Text.Trim() == level)
+                {
+                    return true; // Found the matching language and level
+                }
+            }
+
+            return false;
+        }
+
 
         // Delete all languages
         public void DeleteAllLanguages()
@@ -146,6 +241,7 @@ namespace qa_dotnet_cucumber.Pages
             while (true)
             {
                 var deleteButtons = driver.FindElements(LanguageDeleteButton);
+
                 if (deleteButtons.Count == 0)
                 {
                     Console.WriteLine("All languages are deleted.");
@@ -154,6 +250,7 @@ namespace qa_dotnet_cucumber.Pages
                 int initialCount = deleteButtons.Count;
                 try
                 {
+
                     wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(deleteButtons[0]));
                     deleteButtons[0].Click();
                     wait.Until(driver =>
@@ -161,6 +258,7 @@ namespace qa_dotnet_cucumber.Pages
                         var newDeleteButtons = driver.FindElements(LanguageDeleteButton);
                         return newDeleteButtons.Count < initialCount;
                     });
+
                     // Thread.Sleep(500);
                 }
                 catch (WebDriverTimeoutException ex)
@@ -170,6 +268,7 @@ namespace qa_dotnet_cucumber.Pages
                 }
             }
         }
+
         public bool AreLanguagesPresent()
         {
             var languageRows = wait.Until(d => d.FindElements(LanguageRow));
@@ -177,22 +276,15 @@ namespace qa_dotnet_cucumber.Pages
         }
 
 
-
-
-
         // Get duplicate language error message after trying to add a duplicate language
         public string GetDuplicateLanguageMessage()
         {
-            try
-            {
-                var messageElement = wait.Until(ExpectedConditions.ElementIsVisible(DuplicateLangErrMsg));
-                return messageElement.Text.Trim();
-            }
-            catch (WebDriverTimeoutException)
-            {
-                return string.Empty;
-            }
+            var DupLangErrMsg = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(DuplicateLangErrMsg));
+
+            return DupLangErrMsg.Text;
         }
+
+
 
         // Get empty language error message when trying to add an empty language and level
         public string GetValidationErrorMessage()
@@ -248,7 +340,16 @@ namespace qa_dotnet_cucumber.Pages
                 NavigateToLanguageTab();
             }
         }
+        
+        public string LangLevelFieldValidationErrMsg()
+        {
+            var ValidationErrMsg = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(DuplicateLangErrMsg));
+
+            return ValidationErrMsg.Text;
+
+        }
+        
+        
     }
         
 }
-

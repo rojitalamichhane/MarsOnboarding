@@ -1,89 +1,56 @@
-@SkillTest
-Feature: Skills Functionality
-  As a user, I want to add skills into my profile page
+Feature: Skill Functionality
+  As a user, I want to log in to the Mars portal application to create, edit
+  and delete skill functionality.  I would be able to show what skills I have
 
-  Background:
-    Given I sign in to the profile page as a valid user
-  
-  @Order1 @Valid @Positive
-  Scenario: Add new skill and skill level record with valid data
-    When I add a new '<Skill>' and '<SkillLevel>' in my profile
-    Then The '<Skill>' and '<SkillLevel>' should be added and listed successfully
-    Examples:
-      | Skill | SkillLevel        |
+  Background: 
+  Given I sign in to the profile page with valid username and password
+
+  # Adding New Skill and level
+  @Order1 @AddLanguage
+  Scenario Outline: Create new skill and level record with valid data
+    When I create a new '<Skill>' and '<Level>' in my profile
+    Then The '<Skill>' and '<Level>' should be created and listed successfully
+    Examples: 
+      | Skill              | Level        |
       | HTML  | Expert       |
       | CSS   | Intermediate |
       | JS   | Beginner |
-
   
-  #Updating Existing Skill and Level
-  @Order2 @UpdateSkill
-  Scenario Outline: Update the existing skill and skill level with valid data
-    When I update existing skill '<Skill>' to new skill '<New Skill>' and level '<New Skill Level>'
-    Then The updated skill '<New Skill>' and '<New Skill Level>' should be listed successfully
+  #Updating Existing skill and level
+  @Order2 @UpdateSkills
+  Scenario: Update the existing skill and level with valid data
+    When I update an Existing Skill and Existing Level in my profile
+    | Skill  | New Skill  | New Level    |
+    | Java   | C#         | Intermediate |
+    | Python | TypeScript | Expert       |
+    Then The New Skill and New Level should be updated and listed successfully
+   
 
-  Examples:
-    | Skill | New Skill | New Skill Level      |
-    | HTML   | Database        | Beginner |
-
-
-  # Deleting all skills and levels
-  @Order3 @DeleteSkill
+  #Deleting All Skills and level
+  @Order3 @DeleteSkills
   Scenario: Delete all existing skill and level
-  When I delete all skills in my profile and successful message should appear
-  Then The deleted skill should not appear in the list
-
-  # Duplicate skill and level entries handling
-  @Order4 @DuplicateSkill
-  Scenario Outline: Try to add duplicate skill and level entries
-    When I try to add a duplicate skill '<Skill>' with level '<Level>' in my profile
-    Then I should see the duplicate skill error message '<ExpectedMessage>'
-
-    Examples:
-      | Skill | Level             | ExpectedMessage                                   |
-      | JS  | Beginner            | This skill is already exist in your skill list. |
-
-  # Skill field validation - empty inputs
-  @Order5 @EmptyInputs
-  Scenario Outline: Try to add a skill with empty skill or level
-    When I try to add skill '<Skill>' with level '<Level>' in my profile
-    Then I should see the empty skill error message '<ExpectedMessage>'
-
-    Examples:
-      | Skill | Level                | ExpectedMessage                            |
-      |          | Choose Skill Level| Please enter skill and experience level            |
-      | JS  | Choose Skill Level| Please enter skill and experience level            |
+    When I delete all skills in my profile and successful message should appear
+    Then The deleted skills should not appear in the list
 
 
-   @Order6 @SkillFieldValidation
-    Scenario Outline: As a user I should not be able to add invalid inputs
-    When I add the following skills and select skill level:
-      | Skill       | SkillLevel |
-      | <Skill>     | <SkillLevel> |
-    Then Error message should be displayed
+  #Duplicate values check  while adding skill and level
+  Scenario: Duplicate skill entries handling
+    When I try to add the following skill entries:
+      | DupSkill | FirstLevel | SecondLevel    | ExpectedMessage                                       |
+      | Java     | Intermediate      | Intermediate          | This skill is already exist in your skill list. |
+      | Java     | Intermediate      | Expert | Duplicated data    |
+    Then Expected Message should be displayed
+    Scenario: Duplicate skill check with change of case
+        When I try to add the same skill with change of case
+        Then The skill should not be added and listed
 
-    Examples:
-      | Skill                               | SkillLevel |
-      | 123456789012345678901234567890      | Beginner   |
-      | !@#$%^&*()_+                         | Intermediate |
-      | 123Skill                            | Expert     |
-      | 1a                                   | Expert     |
+    #Skill Field Validation
+    Scenario: Skill or Level field should not be empty
+      When I try to add a skill without skill or level
+      | Skill | Level              |
+      |       | Choose Skill Level |
+      | Java  | Choose Skill Level |
+      |       | Beginner           |
+      Then Please enter skill and level should be displayed
 
-  # Skill add cancel
-  @Order7 @SkillCancellation
-  Scenario: As a user, I should be able to cancel the skill add operation
-    When I start adding the skill "HTML" with level "Fluent" and cancel the operation
-    Then the skill "HTML" should not be added to the list
-
-
-
-
-     
-    
-
-
-      
-
-
-
-
+ 
