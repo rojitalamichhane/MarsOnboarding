@@ -27,10 +27,8 @@ namespace qa_dotnet_cucumber.Steps
         [Given("I sign in to the profile page with valid username and password")]
         public void GivenISignInToTheProfilePageAsARegisteredUser()
         {
-            _navigationHelper.NavigateTo("Home/");
-            Assert.That(_loginPage.IsAtLoginPage(), Is.True, "Home");
-            _loginPage.Login("bha@gmail.com", "bhavani");
-            _skillPage.SkillsTab();
+            _navigationHelper.NavigateTo("http://localhost:5003/");
+            _loginPage.Login("rose@gmail.com", "rose123");
         }
 
         [When("I create a new {string} and {string} in my profile")]

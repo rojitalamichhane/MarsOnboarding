@@ -6,7 +6,7 @@ Feature: Skill Functionality
   Given I sign in to the profile page with valid username and password
 
   # Adding New Skill and level
-  @Order1 @AddLanguage
+  @Order1 @AddSkills
   Scenario Outline: Create new skill and level record with valid data
     When I create a new '<Skill>' and '<Level>' in my profile
     Then The '<Skill>' and '<Level>' should be created and listed successfully
