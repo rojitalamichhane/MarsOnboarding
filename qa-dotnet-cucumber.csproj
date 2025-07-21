@@ -30,7 +30,7 @@
     <PackageReference Include="ExtentReports" Version="5.0.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
-    <PackageReference Include="NUnit" Version="4.3.2" />
+    <PackageReference Include="NUnit" Version="3.13.3" />
     <PackageReference Include="NUnit.Analyzers" Version="3.9.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
     <PackageReference Include="Reqnroll" Version="2.3.0" />
@@ -38,10 +38,20 @@
     <PackageReference Include="Selenium.Support" Version="4.29.0" />
     <PackageReference Include="Selenium.WebDriver" Version="4.29.0" />
     <PackageReference Include="WebDriverManager" Version="2.17.5" />
-  </ItemGroup>
+</ItemGroup>
+
+
 
   <ItemGroup>
     <Using Include="NUnit.Framework" />
+  </ItemGroup>
+
+   <ItemGroup>
+     <None Update="features/Login.feature">
+      <Generator>ReqnrollSingleFileGenerator</Generator>
+      <LastGenOutput>Login.feature.cs</LastGenOutput>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+     </None>
   </ItemGroup>
 
 </Project>
