@@ -1,11 +1,11 @@
 namespace qa_dotnet_cucumber.Config
 {
     public class TestSettings
-{
-    public BrowserSettings Browser { get; set; } = new BrowserSettings();
-    public ReportSettings Report { get; set; } = new ReportSettings();
-    public EnvironmentSettings Environment { get; set; } = new EnvironmentSettings();
-}
+    {
+        public BrowserSettings Browser { get; set; } = new BrowserSettings();
+        public ReportSettings Report { get; set; } = new ReportSettings();
+        public EnvironmentSettings Environment { get; set; } = new EnvironmentSettings();
+    }
 
 
     public class BrowserSettings
@@ -16,14 +16,14 @@ namespace qa_dotnet_cucumber.Config
     }
 
     public class ReportSettings
-{
-    public string Path { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-}
+    {
+        public string Path { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+    }
 
-public class EnvironmentSettings
-{
-    public string BaseUrl { get; set; } = string.Empty;
-}
+    public class EnvironmentSettings
+    {
+        public string BaseUrl { get; set; } = string.Empty;
+    }
 
 }

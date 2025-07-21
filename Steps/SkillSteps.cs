@@ -1,111 +1,96 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using OpenQA.Selenium;
 using qa_dotnet_cucumber.Pages;
 using Reqnroll;
+using NUnit.Framework;
 
 namespace qa_dotnet_cucumber.Steps
 {
     [Binding]
-    [Scope(Feature = "Skill Functionality")]
     public class SkillSteps
     {
+        private readonly IWebDriver _driver;
+        private readonly SkillPage _skillPage;
         private readonly LoginPage _loginPage;
         private readonly NavigationHelper _navigationHelper;
-        private readonly SkillPage _skillPage;
         private readonly ScenarioContext _scenarioContext;
-        public SkillSteps(LoginPage loginPage, NavigationHelper navigationHelper, SkillPage skillPage, ScenarioContext scenarioContext)
+
+        public SkillSteps(IWebDriver driver, SkillPage skillPage, LoginPage loginPage, NavigationHelper navigationHelper,
+            ScenarioContext scenarioContext)  // <-- add this parameter
         {
+            _driver = driver;
+            _skillPage = skillPage;
             _loginPage = loginPage;
             _navigationHelper = navigationHelper;
-            _skillPage = skillPage;
-            _scenarioContext = scenarioContext;
+            _scenarioContext = scenarioContext;    // <-- assign it here!
         }
 
-        [Given("I sign in to the profile page with valid username and password")]
-        public void GivenISignInToTheProfilePageAsARegisteredUser()
+
+
+        [Given(@"I sign in to the profile page as a valid user")]
+        public void GivenISignInToTheProfilePageAsAValidUser()
         {
-            _navigationHelper.NavigateTo("http://localhost:5003/");
+            _driver.Navigate().GoToUrl("http://localhost:5003/");
             _loginPage.Login("rose@gmail.com", "rose123");
+            _skillPage.NavigateToSkillTab();
         }
 
-        [When("I create a new {string} and {string} in my profile")]
-        public void WhenICreateANewAndInMyProfile(string skill, string level)
+        // ------------------ Add skill Steps ------------------
+        [When("I add a new {string} and {string} in my profile")]
+        public void WhenIAddANewAndInMyProfile(string skill, string level)
         {
-            
-            _skillPage.CreateSkillLevel(skill, level);
+            _skillPage.AddSkill(skill, level);
+
+            if (!_scenarioContext.TryGetValue("SkillsToCleanup", out List<string> skills))
+            {
+                skills = new List<string>();
+                _scenarioContext["SkillsToCleanup"] = skills;
+            }
+            skills.Add(skill);
         }
 
-        [Then("The {string} and {string} should be created and listed successfully")]
-        public void ThenTheAndShouldBeCreatedAndListedSuccessfully(string skill, string level)
+
+        [Then("The {string} and {string} should be added and listed successfully")]
+        public void ThenTheAndShouldBeAddedAndListedSuccessfully(string skill, string level)
         {
-            string SavedSkillAddedMsg = _skillPage.SkillAddedSuccessMsg();
-            string SavedSkill = _skillPage.SkillListing();
-            string SavedLevel = _skillPage.LevelListing();
-
-            Assert.That(SavedSkillAddedMsg == skill + " has been added to your skills", "Skill Added Message is not displayed successfully");
-            Assert.That(SavedSkill == skill, "Skill has not been added successfully");
-            Assert.That(SavedLevel == level, "Level has not been added successfully");
-
+            Assert.IsTrue(_skillPage.IsSkillDisplayed(skill, level), $"Skill '{skill}' with level '{level}' was not found.");
         }
 
-        [When("I update an Existing Skill and Existing Level in my profile")]
-        public void WhenIUpdateAnExistingSkillAndExistingLevelInMyProfile(Table updateSkilltable)
+
+        [Given("I have added a skill {string} with level {string}")]
+        public void GivenIHaveAddedASkillWithLevel(string skill, string level)
         {
             _skillPage.DeleteAllSkills();
-            _skillPage.CreateSkillLevel("Java", "Expert");
-            _skillPage.CreateSkillLevel("Python", "Beginner");
-
-            var updatedSkills = new List<(string newSkill, string newLevel, string successMsg)>();
-
-            foreach (var row in updateSkilltable.Rows)
-            {
-                var skill = row["Skill"];
-                var newSkill = row["New Skill"];
-                var newLevel = row["New Level"];
-
-                _skillPage.UpdateSkillAndLevel(skill, newSkill, newLevel);
-                string successMsg = _skillPage.SkillUpdatedSuccessMsg();
-                updatedSkills.Add((newSkill, newLevel, successMsg));
-
-
-            }
-            _scenarioContext["updatedSkills"] = updatedSkills;
+            _skillPage.AddSkill(skill, level);
         }
-        [Then("The New Skill and New Level should be updated and listed successfully")]
-        public void ThenTheNewSkillAndNewLevelShouldBeUpdatedAndListedSuccessfully()
+
+        [When("I update skill {string} to new skill {string} with level {string}")]
+        public void WhenIUpdateSkillToNewSkillWithLevel(string oldSkill, string newSkill, string newLevel)
         {
-            var updatedSkills = (List<(string newSkill, string newLevel, string successMsg)>)_scenarioContext["updatedSkills"];
-
-            foreach (var (newSkill, newLevel, successMsg) in updatedSkills)
-            {
-                var isSkillPresent = _skillPage.IsSkillAndLevelPresent(newSkill, newLevel);
-                Assert.That(isSkillPresent,
-                    Is.True,
-                    $"Expected to find '{newSkill}' with level '{newLevel}' in the skill list, but it was not found.");
-                Assert.That(successMsg.Contains(newSkill),
-                    $"Expected success message to contain '{newSkill}', but got: '{successMsg}'");
-            }
-
+            _skillPage.UpdateSkill(oldSkill, newSkill, newLevel);
         }
+
+        [Then("The {string} and {string} should be updated and listed successfully")]
+        public void ThenTheAndShouldBeUpdatedAndListedSuccessfully(string skill, string level)
+        {
+            bool exists = _skillPage.IsSkillAndLevelPresent(skill, level);
+            Assert.IsTrue(exists, $"Skill '{skill}' with level '{level}' was not found after update.");
+        }
+
+        //------------------- Delete skill Steps ------------------
 
         [When("I delete all skills in my profile and successful message should appear")]
         public void WhenIDeleteAllSkillsInMyProfileAndSuccessfulMessageShouldAppear()
         {
             _skillPage.DeleteAllSkills();
         }
-
-        [Then("The deleted skills should not appear in the list")]
-        public void ThenTheDeletedSkillsShouldNotAppearInTheList()
+        
+        [Then("The deleted skill should not appear in the list")]
+        public void ThenTheDeletedSkillShouldNotAppearInTheList()
         {
-            
             bool skillsExist = _skillPage.AreSkillsPresent();
-
             Assert.That(skillsExist, Is.False, "Skills are still present in the profile list. Expected all to be deleted.");
-
         }
+
 
         [When("I try to add the following skill entries:")]
         public void WhenITryToAddTheFollowingSkillEntries(Table dupSkillCheckTable)
@@ -119,8 +104,8 @@ namespace qa_dotnet_cucumber.Steps
 
                 _skillPage.DeleteAllSkills();
 
-                _skillPage.CreateSkillLevel(dupSkill, firstLevel);
-                _skillPage.CreateSkillLevel(dupSkill, secondLevel);
+                _skillPage.AddSkill(dupSkill, firstLevel);
+                _skillPage.AddSkill(dupSkill, secondLevel);
 
 
                 string actualMessage = _skillPage.DuplicateSkillErrorMsg();
@@ -150,8 +135,8 @@ namespace qa_dotnet_cucumber.Steps
         public void WhenITryToAddTheSameSkillWithChangeOfCase()
         {
             _skillPage.DeleteAllSkills();
-            _skillPage.CreateSkillLevel("Java", "Expert");
-            _skillPage.CreateSkillLevel("java", "Expert");
+            _skillPage.AddSkill("Java", "Expert");
+            _skillPage.AddSkill("java", "Expert");
 
             string actualMessage = _skillPage.DuplicateSkillErrorMsg();
             _scenarioContext["ActualErrorMessage"] = actualMessage;
@@ -164,7 +149,7 @@ namespace qa_dotnet_cucumber.Steps
             string actualMessage = _scenarioContext["ActualErrorMessage"] as string ?? string.Empty;
             bool isDuplicate = _skillPage.IsDupSkillAndLevelPresent("java", "Expert");
 
-            string errorMessage = actualMessage;
+            string errorMessage = actualMessage ?? string.Empty;
 
             // Combine both assertions with a custom message
             Assert.Multiple(() =>
@@ -184,7 +169,7 @@ namespace qa_dotnet_cucumber.Steps
                 string language = row["Skill"];
                 string level = row["Level"];
 
-                _skillPage.CreateSkillLevel(language, level);
+                _skillPage.AddSkill(language, level);
 
 
 
@@ -206,7 +191,6 @@ namespace qa_dotnet_cucumber.Steps
             Assert.That(errorMessage, Is.EqualTo("Please enter skill and experience level"),
                             "The error message for field validation is incorrect.");
         }
-
 
     }
 }

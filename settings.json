@@ -1,15 +1,15 @@
 {
   "Browser": {
-    "Type": "Chrome",
-    "Headless": true,
-    "TimeoutSeconds": 30
+  "Type": "chrome",
+  "Headless": false,
+  "TimeoutSeconds": 30
   },
+
   "Report": {
     "Path": "TestReport.html",
-
-    "Title": "Test Automation Report"
+    "Title": "Test Report"
   },
   "Environment": {
-    "BaseUrl": "http://localhost:5003/Home"
+    "BaseUrl": "http://localhost:5003/"
   }
 }

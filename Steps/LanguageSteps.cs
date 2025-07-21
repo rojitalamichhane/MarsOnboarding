@@ -1,196 +1,242 @@
-using OpenQA.Selenium;
-using qa_dotnet_cucumber.Pages;
-using Reqnroll;
 using NUnit.Framework;
+using Reqnroll;
+using qa_dotnet_cucumber.Pages;
+using qa_dotnet_cucumber.Hooks;  // Import for TestHooks
+using System;
 using System.Text;
 
-[Binding]
-[Scope(Feature = "Language Functionality")]
-public class LanguageFunctionalityStepDefinitions
+namespace qa_dotnet_cucumber.Steps
 {
-
-    private readonly LoginPage _loginPage;
-    private readonly NavigationHelper _navigationHelper;
-    private readonly LanguagePage _languagePage;
-    private readonly ScenarioContext _scenarioContext;
-    public LanguageFunctionalityStepDefinitions(LoginPage loginPage, NavigationHelper navigationHelper, LanguagePage languagePage, ScenarioContext scenarioContext)
+    [Binding]
+    [Scope(Feature = "Language Functionality")]
+    [Category("EmptyInputs")]
+    public class LanguageFunctionalityStepDefinitions
     {
-        _loginPage = loginPage;
-        _navigationHelper = navigationHelper;
-        _languagePage = languagePage;
-        _scenarioContext = scenarioContext;
-    }
+        private readonly LoginPage _loginPage;
+        private readonly NavigationHelper _navigationHelper;
+        private readonly LanguagePage _languagePage;
+        private readonly ScenarioContext _scenarioContext;
 
-    [Given(@"I sign in to the profile page with valid email address and password")]
-    public void GivenISignInToTheProfilePageWithValidEmailAddressAndPassword()
-    {
-        _navigationHelper.NavigateTo("http://localhost:5003/");
-        _loginPage.Login("rose@gmail.com", "rose123");
-    }
 
-    // ------------------ Add Language Steps ------------------
-    [When(@"I create a new '([^']*)' and '([^']*)' in my profile")]
-    public void WhenICreateANewLanguageAndLevelInMyProfile(string language, string level)
-    {
-        _languagePage.AddLanguage(language, level);
-    }
-
-    [Then(@"The '([^']*)' and '([^']*)' should be created and listed successfully")]
-    public void ThenTheLanguageAndLevelShouldBeCreatedAndListedSuccessfully(string language, string level)
-    {
-        string LanguageAddedMsg = _languagePage.LangAddedSuccessMsg();
-        string SavedLanguage = _languagePage.LanguageListing();
-        string SavedLevel = _languagePage.LevelListing();
-
-        Assert.That(LanguageAddedMsg == language + " has been added to your languages", "Language Added Message is not displayed successfully");
-        Assert.That(SavedLanguage == language, "Language has not been added successfully");
-        Assert.That(SavedLevel == level, "Level has not been added successfully");
-    }
-
-    // ------------------ Update Language Steps ------------------
-    [When("I update an Existing Language and Existing Level in my profile")]
-    public void WhenIUpdateAnExistingLanguageAndExistingLevelInMyProfile(Table updateLangtable)
-    {
-        _languagePage.DeleteAllLanguages();
-        _languagePage.WaitForAddNewButton();
-        Thread.Sleep(1000); // Wait for deletion to complete
-        _languagePage.AddLanguage("English", "Basic");
-        _languagePage.AddLanguage("Spanish", "Fluent");
-
-        var updatedLanguages = new List<(string newLang, string newLevel, string successMsg)>();
-
-        foreach (var row in updateLangtable.Rows)
+        public LanguageFunctionalityStepDefinitions(
+            LoginPage loginPage,
+            NavigationHelper navigationHelper,
+            LanguagePage languagePage,
+            ScenarioContext scenarioContext)   // Add to constructor
         {
-            var language = row["Language"];
-            var newLanguage = row["New Language"];
-            var newLevel = row["New Level"];
-
-            _languagePage.UpdateLanguage(language, newLanguage, newLevel);
-            string successMsg = _languagePage.LangUpdatedSuccessMsg();
-            updatedLanguages.Add((newLanguage, newLevel, successMsg));
-
-
-        }
-        _scenarioContext["updatedLanguages"] = updatedLanguages;
-    }
-    [Then("The New Language and New Level should be updated and listed successfully")]
-    public void ThenTheNewLanguageAndNewLevelShouldBeUpdatedAndListedSuccessfully()
-    {
-        var updatedLanguages = (List<(string newLang, string newLevel, string successMsg)>)_scenarioContext["updatedLanguages"];
-
-        foreach (var (newLang, newLevel, successMsg) in updatedLanguages)
-        {
-            var isLanguagePresent = _languagePage.IsLanguageAndLevelPresent(newLang, newLevel);
-            Assert.That(isLanguagePresent,
-                Is.True,
-                $"Expected to find '{newLang}' with level '{newLevel}' in the language list, but it was not found.");
-            Assert.That(successMsg.Contains(newLang),
-                $"Expected success message to contain '{newLang}', but got: '{successMsg}'");
+            _loginPage = loginPage;
+            _navigationHelper = navigationHelper;
+            _languagePage = languagePage;
+            _scenarioContext = scenarioContext;
         }
 
-    }
-
-
-    // ------------------ Delete Language Steps ------------------
-
-    [When("I delete all languages in my profile and successful message should appear")]
-    public void WhenIDeleteAllLanguagesInMyProfileAndSuccessfulMessageShouldAppear()
-    {
-        _languagePage.DeleteAllLanguages();
-    }
-    [Then("The deleted language should not appear in the list")]
-    public void ThenTheDeletedLanguageShouldNotAppearInTheList()
-    {
-        bool languagesExist = _languagePage.AreLanguagesPresent();
-        Assert.That(languagesExist, Is.False, "Languages are still present in the profile list. Expected all to be deleted.");
-    }
-
-
-    // ------------------ Duplicate Language Steps ------------------
-    [When("I try to add the following language entries:")]
-    public void WhenITryToAddTheFollowingLanguageEntries(Table dupLangCheckTable)
-    {
-
-        foreach (var row in dupLangCheckTable.Rows)
+        [Given("I sign in to the profile page with valid username and password")]
+        public void GivenISignInToTheProfilePageAsARegisteredUser()
         {
-            string sameLang = row["DupLanguage"];
-            string firstLangLevel = row["FirstLevel"];
-            string secondLangLevel = row["SecondLevel"];
-            string expectedMessage = row["ExpectedMessage"];
+            _navigationHelper.NavigateTo("Home/");
+            Assert.That(_loginPage.IsAtHomePage(), Is.True, "Home");
+            _loginPage.Login("rose@gmail.com", "rose123");
+        }
 
+        [When("I create a new {string} and {string} in my profile")]
+        public void WhenICreateANewAndInMyProfile(string language, string level)
+        {
+            _languagePage.CreateLanguageLevel(language, level);
+
+            // Track for cleanup
+            if (!_scenarioContext.TryGetValue("LanguagesToCleanup", out List<string>? cleanupList))
+            {
+                cleanupList = new List<string>();
+                _scenarioContext["LanguagesToCleanup"] = cleanupList;
+            }
+
+            if (cleanupList != null && !cleanupList.Contains(language))
+                cleanupList.Add(language);
+        }
+
+        [Then("The {string} and {string} should be created and listed successfully")]
+        public void ThenTheAndShouldBeCreatedAndListedSuccessfully(string language, string level)
+        {
+            string savedLangAddedMsg = _languagePage.LangAddedSuccessMsg();
+            string savedLanguage = _languagePage.LanguageListing();
+            string savedLevel = _languagePage.LevelListing();
+
+            Assert.That(savedLangAddedMsg == language + " has been added to your languages", "Language Added Message is not displayed successfully");
+            Assert.That(savedLanguage == language, "Language has not been added successfully");
+            Assert.That(savedLevel == level, "Level has not been added successfully");
+        }
+
+        [Given("I have added a language {string} with level {string}")]
+        public void GivenIHaveAddedALanguageWithLevel(string language, string level)
+        {
             _languagePage.DeleteAllLanguages();
-
-            _languagePage.AddLanguage(sameLang, firstLangLevel);
-            _languagePage.AddLanguage(sameLang, secondLangLevel);
-
-
-            string actualMessage = _languagePage.GetDuplicateLanguageMessage();
-            _languagePage.clickCancelButton();
-            Console.WriteLine("Message displayed: " + actualMessage);
-
-            _scenarioContext["ActualMessage"] = actualMessage;
-            _scenarioContext["ExpectedMessage"] = expectedMessage;
-
+            _languagePage.CreateLanguageLevel(language, level);
         }
-    }
 
-    [Then("ExpectedMessage should be displayed")]
-    public void ThenExpectedMessageShouldBeDisplayed()
-    {
-        string actualMessage = _scenarioContext["ActualMessage"] as string ?? string.Empty;
-        string expectedMessage = _scenarioContext["ExpectedMessage"] as string ?? string.Empty;
-
-        Assert.That(actualMessage, Is.EqualTo(expectedMessage),
-            $"Expected message '{expectedMessage}', but got '{actualMessage}'.");
-
-    }
-
-
-    //Language Empty check 
-    [When("I try to add a language without language or level")]
-    public void WhenITryToAddALanguageWithoutLanguageOrLevel(Table table)
-    {
-        _languagePage.DeleteAllLanguages(); // Clean up
-        _languagePage.WaitForAddNewButton();
-        Thread.Sleep(1000); // Optional short pause
-
-        var validationMessages = new List<string>();
-
-        foreach (var row in table.Rows)
+        [When("I update language {string} to new language {string} with level {string}")]
+        public void WhenIUpdateLanguageToNewLanguageWithLevel(string oldLanguage, string newLanguage, string newLevel)
         {
-            string language = row["Language"];
-            string level = row["Level"];
+            _languagePage.UpdateLanguageAndLevel(oldLanguage, newLanguage, newLevel);
 
-            _languagePage.AddLanguage(language, level); // This triggers the validation
-            string message = _languagePage.GetValidationErrorMessage();
-            validationMessages.Add(message);
         }
 
-        _scenarioContext["validationMessages"] = validationMessages;
-    }
-
-    [Then("Please enter language and level should be displayed")]
-    public void ThenPleaseEnterLanguageAndLevelShouldBeDisplayed()
-    {
-        var messages = (List<string>)_scenarioContext["validationMessages"];
-
-        foreach (var msg in messages)
+        [Then("The {string} and {string} should be updated and listed successfully")]
+        public void ThenTheAndShouldBeUpdatedAndListedSuccessfully(string language, string level)
         {
-            Assert.That(msg.ToLower(), Does.Contain("please"), $"Expected a validation message but got: {msg}");
+            bool exists = _languagePage.IsLanguageAndLevelPresent(language, level);
+            Assert.IsTrue(exists, $"Language '{language}' with level '{level}' was not found after update.");
         }
-    }
+
+        [When("I delete all languages in my profile and successful message should appear")]
+        public void WhenIDeleteAllLanguagesInMyProfileAndSuccessfulMessageShouldAppear()
+        {
+            _languagePage.DeleteAllLanguages();
+        }
+
+        [Then("The deleted language should not appear in the list")]
+        public void ThenTheDeletedLanguageShouldNotAppearInTheList()
+        {
+            bool languagesExist = _languagePage.AreLanguagesPresent();
+
+            Assert.That(languagesExist, Is.False, "Languages are still present in the profile list. Expected all to be deleted.");
+        }
+
+        [When("I try to add the following language entries:")]
+        public void WhenITryToAddTheFollowingLanguageEntries(Table dupLangCheckTable)
+        {
+            
+            foreach (var row in dupLangCheckTable.Rows)
+            {
+                string dupLanguage = row["DupLanguage"];
+                string firstLevel = row["FirstLevel"];
+                string secondLevel = row["SecondLevel"];
+                string expectedMessage = row["ExpectedMessage"];
+
+                _languagePage.DeleteAllLanguages();
+
+                _languagePage.CreateLanguageLevel(dupLanguage, firstLevel);
+                _languagePage.CreateLanguageLevel(dupLanguage, secondLevel);
+
+                
+                string actualMessage = _languagePage.DuplicateLanguageErrorMsg();
+                _languagePage.clickCancelButton(); 
+                Console.WriteLine("Message displayed: " + actualMessage);
+
+                _scenarioContext["ActualMessage"] = actualMessage;
+                _scenarioContext["ExpectedMessage"] = expectedMessage;
+
+                }
+        }
+
+        [Then("ExpectedMessage should be displayed")]
+        public void ThenExpectedMessageShouldBeDisplayed()
+        {
+            string actualMessage = _scenarioContext["ActualMessage"] as string ?? string.Empty;
+            string expectedMessage = _scenarioContext["ExpectedMessage"] as string ?? string.Empty;
+
+            Assert.That(actualMessage, Is.EqualTo(expectedMessage),
+                $"Expected message '{expectedMessage}', but got '{actualMessage}'.");
+
+        }
 
 
+        [When("I try to add the same langauge with change of case")]
+        public void WhenITryToAddTheSameLangaugeWithChangeOfCase()
+        {
+            _languagePage.DeleteAllLanguages();
+            _languagePage.CreateLanguageLevel("English", "Basic");
+            _languagePage.CreateLanguageLevel("english", "Basic");
+            
+            string actualMessage = _languagePage.DuplicateLanguageErrorMsg();
+            _scenarioContext["ActualErrorMessage"] = actualMessage;
+        }
 
-    [Then(@"I should see the error message '(.*)'")]
-    public void ThenIShouldSeeTheErrorMessage(string expectedMessage)
-    {
-        string actualMessage = _languagePage.GetValidationErrorMessage();
-        Assert.That(actualMessage, Is.EqualTo(expectedMessage), "Validation error message did not match!");
-    }
+        [Then("The language should not be added and listed")]
+        public void ThenTheLanguageShouldNotBeAddedAndListed()
+        {
+            string actualMessage = _scenarioContext["ActualErrorMessage"] as string ?? string.Empty;
+            bool isDuplicate = _languagePage.IsDupLanguageAndLevelPresent("english", "Basic");
 
-    //Language validation for alphanumeric and special characters
-    [When("I try to enter non-alphabet characters in language field")]
+            string errorMessage = actualMessage;
+
+            // Combine both assertions with a custom message
+            Assert.Multiple(() =>
+            {
+                Assert.That(isDuplicate, Is.False, "Duplicated language and level is getting added, but it shouldn't be.");
+                Assert.That(errorMessage, Is.EqualTo("This language is already exist in your language list."),
+                            "The error message for duplicate language is incorrect.");
+            });
+
+        }
+        
+        [When("I try to add the following language entries while editing:")]
+        public void WhenITryToAddTheFollowingLanguageEntriesWhilEditing(DataTable dupLangEditTable)
+        {
+            _languagePage.DeleteAllLanguages();
+            _languagePage.CreateLanguageLevel("English", "Basic");
+            _languagePage.CreateLanguageLevel("Spanish", "Fluent");
+
+            foreach (var row in dupLangEditTable.Rows)
+            {
+                string language = row["Language"];
+                string dupLanguage = row["DupLanguage"].Trim(); // Trim to ensure empty string is correctly detected
+                string level = row["Level"].Trim();
+                string expectedMessage = row["ExpectedMessage"];
+
+                _languagePage.UpdateLanguageAndLevel(language, dupLanguage, level);
+
+                string actualMessage = _languagePage.DuplicateLanguageErrorMsg();
+                Console.WriteLine(actualMessage);
+
+                // Click Cancel only if the button is present
+                if (_languagePage.IsCancelButtonPresent())
+                {
+                    _languagePage.clickCancelButton();
+                }
+
+                _scenarioContext["ActualMessage"] = actualMessage;
+                _scenarioContext["ExpectedMessage"] = expectedMessage;
+            }
+        }
+
+
+        //Language and Level field validation
+        [When("I try to add a language without language or level")]
+        public void WhenITryToAddALanguageWithoutLanguageOrLevel(Table fieldvalidationTable)
+        {
+            foreach (var row in fieldvalidationTable.Rows)
+            {
+                string language = row["Language"];
+                string level = row["Level"];
+
+                _languagePage.CreateLanguageLevel(language, level);
+               
+
+
+                string actualMessage = _languagePage.LangLevelFieldValidationErrMsg();
+                _scenarioContext["ActualErrorMessage"] = actualMessage;
+               // Console.WriteLine("Message displayed: " + actualMessage);
+                _languagePage.clickCancelButton();
+                
+
+            }
+        }
+
+        [Then("Please enter language and level should be displayed")]
+        public void ThenPleaseEnterLanguageAndLevelShouldBeDisplayed()
+        {
+            string actualMessage = _scenarioContext["ActualErrorMessage"] as string ?? string.Empty;
+            //bool isDuplicate = _languagePage.IsDupLanguageAndLevelPresent("english", "Basic");
+
+            string errorMessage = actualMessage;
+            Assert.That(errorMessage, Is.EqualTo("Please enter language and level"),
+                            "The error message for field validation is incorrect.");
+
+        }
+
+
+        //Non-alphabet characters in language field
+        [When("I try to enter non-alphabet characters in language field")]
         public void WhenITryToEnterNon_AlphabetCharactersInLanguageField(Table invalidLangDataSet)
         {
             var invalidLanguages = new List<(string invalidLanguage, string level, string expectedMessage, string actualMessage, bool isPresentInList)>();
@@ -202,7 +248,7 @@ public class LanguageFunctionalityStepDefinitions
                 string expectedMessage = row["ExpectedMessage"];
 
                 _languagePage.DeleteAllLanguages();  // Clear any existing data
-                _languagePage.AddLanguage(invalidLanguage, level);  // Attempt to create a new language
+                _languagePage.CreateLanguageLevel(invalidLanguage, level);  // Attempt to create a new language
 
                 // Get the actual error message displayed for the invalid input
                 string actualMessage = _languagePage.LangLevelFieldValidationErrMsg();
@@ -217,7 +263,7 @@ public class LanguageFunctionalityStepDefinitions
             _scenarioContext["InvalidLanguages"] = invalidLanguages;
         }
 
-            [Then("Error message should be displayed")]
+        [Then("Error message should be displayed")]
         public void ThenErrorMessageShouldBeDisplayed()
         {
             var invalidLanguages = (List<(string invalidLanguage, string level, string expectedMessage, string actualMessage, bool isPresentInList)>)_scenarioContext["InvalidLanguages"];
@@ -247,7 +293,10 @@ public class LanguageFunctionalityStepDefinitions
                 }
             }
 
-            // If errors exist, fail the test and display them
             Assert.That(hasError, Is.False, errorBuilder.ToString());
         }
+
+    }
+
 }
+

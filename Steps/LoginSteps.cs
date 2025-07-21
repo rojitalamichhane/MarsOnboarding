@@ -1,102 +1,115 @@
-using OpenQA.Selenium;
 using Reqnroll;
 using qa_dotnet_cucumber.Pages;
-using System;
 
 namespace qa_dotnet_cucumber.Steps
 {
     [Binding]
-    [Scope(Feature = "Login Functionality")]
+    [Scope(Feature = "Login")]
+
     public class LoginSteps
     {
-        private readonly IWebDriver _driver;
         private readonly LoginPage _loginPage;
+        private readonly NavigationHelper _navigationHelper;
 
-        public LoginSteps(ScenarioContext context)
+        public LoginSteps(LoginPage loginPage, NavigationHelper navigationHelper)
         {
-            _driver = (IWebDriver)context["driver"];
-            _loginPage = new LoginPage(_driver);
+            _loginPage = loginPage;
+            _navigationHelper = navigationHelper;
         }
 
-        [Given(@"I navigate to the login page")]
-        public void GivenINavigateToTheLoginPage()
+        [Given("I am on the home page")]
+        public void GivenIAmOnTheHomePage()
         {
-            _loginPage.NavigateToLoginPage();
+            _navigationHelper.NavigateTo("Home");
+            Assert.That(_loginPage.IsAtHomePage(), Is.True, "Home page not loaded");
         }
 
-        [Given(@"I click the sign in button")]
-        public void GivenIClickTheSignInButton()
+        [When("I enter valid username and valid password")]
+        public void WhenIEnterValidUsernameAndValidPassword()
         {
-            _loginPage.ClickSignInButton();
+            _loginPage.Login("rose@gmail.com", "rose123");
         }
 
-        [When(@"I enter valid username and password")]
-        public void WhenIEnterValidUsernameAndPassword()
+        [When("I enter invalid username and invalid password")]
+        public void WhenIEnterInvalidUsernameAndInvalidPassword()
         {
-            _loginPage.EnterCredentials("rose@gmail.com", "rose123");
+            _loginPage.Login("a@gmail.com", "rose1234567");
         }
 
-        [When(@"I submit the login form")]
-        public void WhenISubmitTheLoginForm()
+        [When("I enter invalid username and valid password")]
+        public void WhenIEnterInvalidUsernameAndValidPassword()
         {
-            _loginPage.SubmitLogin();
+            _loginPage.Login("admin@gmail.com", "rose123");
         }
 
-        [Then(@"I should be logged in and see the dashboard")]
-        public void ThenIShouldBeLoggedInAndSeeTheDashboard()
+        [When("I enter a valid username and invalid password")]
+        public void WhenIEnterAValidUsernameAndInvalidPassword()
         {
-            if (!_loginPage.IsDashboardVisible())
-            {
-                throw new Exception("Dashboard is not visible after login.");
-            }
+            _loginPage.Login("rose@gmail.com", "Test1234556");
         }
 
-        // Scenario 2: Failed login with invalid email address
-        [When(@"I enter invalid email and valid password")]
-        public void WhenIEnterInvalidEmail()
+        [When("I enter empty credentials")]
+        public void WhenIEnterEmptyCredentials()
         {
-            _loginPage.EnterCredentials("invalidemail", "rose123");
+            _loginPage.Login("", "");
         }
 
-        [Then(@"I should see an incorrect email error message")]
-        public void ThenIShouldSeeAnIncorrectEmailMessage()
+        [When("I enter empty username")]
+        public void WhenIEnterEmptyUsername()
         {
-            if (!_loginPage.IsInvalidEmailErrorDisplayed())
-            {
-                throw new Exception("Invalid email error message is not displayed.");
-            }
+            _loginPage.Login("", "password");
         }
 
-        // Scenario 3: Failed login with invalid password
-        [When(@"I enter valid email and invalid password")]
-        public void WhenIEnterInvalidPassword()
+        [When("I enter empty password")]
+        public void WhenIEnterEmptyPassword()
         {
-            _loginPage.EnterCredentials("rose@gmail.com", "wrongpassword");
+            _loginPage.Login("a@a.com", "");
         }
 
-        [Then(@"I should see an incorrect password error message")]
-        public void ThenIShouldSeeAnIncorrectPasswordErrorMessage()
+        [When("I enter valid username and password as NoSql operator")]
+        public void WhenIEnterValidUsernameAndPasswordAsNoSqlOperator()
         {
-            if (!_loginPage.IsInvalidPasswordErrorDisplayed())
-            {
-                throw new Exception("Invalid password error message is not displayed.");
-            }
+            _loginPage.Login("ambikaarumugams@gmail.com", "{ '$ne': null } ");
         }
 
-        // Scenario 4: Failed login with empty credentials
-        [When(@"I enter empty username and password")]
-        public void WhenIEnterEmptyUsernameAndPassword()
+        [Then("I should see the successful message")]
+        public void ThenIShouldSeeTheSuccessfulMessage()
         {
-            _loginPage.EnterCredentials("", "");
+            var successMessage = _loginPage.GetSuccessMessage();
+            Assert.That(successMessage, Does.Contain("Hi"), "Profile page not loaded after login!");
         }
 
-        [Then(@"I should see a required field error message")]
-        public void ThenIShouldSeeARequiredFieldErrorMessage()
+        [Then("I should see {string} error message")]
+        public void ThenIShouldSeeErrorMessage(string expectedPopUpMessage)
         {
-            if (!_loginPage.IsRequiredFieldErrorMessageDisplayed())
-            {
-                throw new Exception("Required field error message is not displayed.");
-            }
+            Assert.That(_loginPage.IsErrorMsgDisplayed(expectedPopUpMessage), Is.True, $"Error Message \"{expectedPopUpMessage}\" should be displayed");
+        }
+
+        [Then("I should see {string} and {string} validation message")]
+        public void ThenIShouldSeeAndValidationMessage(string expectedValidationMessageForEmail, string expectedValidationMessageForPassword)
+        {
+            Assert.That(_loginPage.IsValidationMsgDisplayed(expectedValidationMessageForEmail), Is.True, $"Validation Message \"{expectedValidationMessageForEmail}\" should be displayed");
+            Assert.That(_loginPage.IsValidationMsgDisplayed(expectedValidationMessageForPassword), Is.True, $"Validation Message \"{expectedValidationMessageForPassword}\" should be displayed");
+        }
+
+        [Then("I should see {string} validation message")]
+        public void ThenIShouldSeeValidationMessage(string validationMessage)
+        {
+            Assert.That(_loginPage.IsValidationMsgDisplayed(validationMessage), Is.True, $"Validation Message \"{validationMessage}\" should be displayed");
+        }
+
+        [Then("I should see {string} error message and {string} notification")]
+        public void ThenIShouldSeeErrorMessageAndNotification(string errorMessage, string verificationOption)
+        {
+            Assert.That(_loginPage.IsErrorMsgDisplayed(errorMessage), Is.True, $"Error Message {errorMessage} should be displayed");
+            Assert.That(_loginPage.IsVerificationOptionAvailable(verificationOption), Is.True, $"Verification option \"{verificationOption}\" should be displayed");
+        }
+
+        [When("I click {string} button I should see {string} message")]
+        public void WhenIClickButtonIShouldSeeMessage(string sendVerificationEmail, string verificationMessage)
+        {
+            _loginPage.ClickSendVerificationEmail(sendVerificationEmail);
+            Assert.That(_loginPage.IsVerificationMessageDisplayed(verificationMessage), Is.True, $"Verification message \"{verificationMessage}\" should be displayed");
         }
     }
 }

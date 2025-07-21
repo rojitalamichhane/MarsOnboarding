@@ -1,251 +1,333 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
 using OpenQA.Selenium;
-using OpenQA.Selenium.BiDi.Modules.Log;
 using OpenQA.Selenium.Support.UI;
-using RazorEngine;
 using SeleniumExtras.WaitHelpers;
+using System;
 
 namespace qa_dotnet_cucumber.Pages
 {
     public class SkillPage
     {
-        private readonly IWebDriver _driver;
-        private readonly WebDriverWait _wait;
-        public IWebDriver Driver => _driver;
+        private readonly IWebDriver driver;
+        private readonly WebDriverWait wait;
 
-        // Locators
-        private readonly By SkillsButton = By.XPath("//div[@class='ui fluid container']//a[2]");
+        public SkillPage(IWebDriver driver)
+        {
+            this.driver = driver;
+            wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+        }
 
-        
+        // Skill tab and add locators
+        private By skillTab => By.XPath("//a[@class='item' and @data-tab='second' and text()='Skills']");
+        private By addNewSkillButton => By.XPath("//div[contains(@class, 'active') and @data-tab='second']//table[@class='ui fixed table']//th[last()]");
+        private By addSkillTextbox => By.XPath("//input[contains(@placeholder,'Add Skill')]");
+        private By skillLevelDropdown => By.XPath("//select[@class='ui fluid dropdown']");
+        private By skillSaveButton => By.XPath("//input[@value='Add']");
 
-        private readonly By AddNewButton = By.XPath("(//table[@class='ui fixed table'])[2]//div");
-        
-        private readonly By SkillField = By.XPath("(//input[@type='text'])[4]");
-        private readonly By SkillLevelField = By.XPath("//select[@class='ui fluid dropdown']");
-        private readonly By AddButton = By.XPath("(//input[@type='button'])[1]");
-        private readonly By AddedSkill = By.XPath("(//table[@class='ui fixed table']//tbody[last()]//tr/td[1])[1]");
-        private readonly By AddedLevel = By.XPath("//table[@class='ui fixed table']//tbody[last()]//tr/td[2]");
-        private readonly By SkillAddedMsg = By.XPath("//div[contains(text(),'has been added to your skills')]");
+        // Update Locators
+        private IWebElement SkillTable => wait.Until(driver =>
+            driver.FindElement(By.XPath("//table[@class='ui fixed table'][.//th[normalize-space(text())='Skill']]")));
+        private readonly By SkillRow = By.XPath("//table[@class='ui fixed table']//tbody/tr");
+        private By SkillCell => By.XPath("./td[1]");
+        private By skillEditIcon => By.XPath("//table[@class='ui fixed table']//th[text()='Skill']/ancestor::table//i[@class='outline write icon']");
+        private By skillEditRow => By.XPath(".//tr[.//input[@placeholder='Add Skill']]");
+        private By skillInputField => By.XPath(".//input[@type='text']");
+        private By skillLevelDropdownInEdit => By.XPath("//select[@name='level' and contains(@class, 'ui fluid dropdown')]");
+        private By skillUpdateButtonInEdit => By.XPath(".//input[@value='Update']");
         private readonly By CancelButton = By.XPath("(//input[@type='button'])[2]");
+        private By skillUpdatedMsg => By.XPath("//div[contains(text(),'has been updated to your skills')]");
 
-        //Update Locators
-        private readonly By SkillEditButton = By.XPath("(//i[@class='outline write icon'])[2]");
-        private readonly By SkillRow = By.XPath("//table[@class='ui fixed table']/tbody/tr");
-        private readonly By SkillUpdatedMsg = By.XPath("//div[contains(text(),'has been updated to your skills')]");
+        // Delete Locators
+        private readonly By skillDeleteButton = By.XPath("//table[.//th[text()='Skill']]//i[@class='remove icon']");
+        private readonly By skillDeletedMsg = By.XPath("//div[contains(text(),'has been deleted')]");
 
+        private readonly By skillCancelButton = By.XPath("//input[@type='button' and @value='Cancel' and contains(@class, 'ui button')]");
 
-        //Delete Locators
-        private readonly By SkillDeleteButton = By.XPath("//div[@data-tab='second']//i[@class='remove icon']");
-        private readonly By SkillDeletedMsg = By.XPath("//div[@class='ns-box ns-growl ns-effect-jelly ns-type-error ns-show']//div");
+        // Validation locators
+        private readonly By DuplicateSkillErrMsg = By.XPath("//div[@class='ns-box-inner' and contains(text(), 'skill is already exist')]");
+        private readonly By EmptySkillErrMsg = By.XPath("//div[@class='ns-box ns-growl ns-effect-jelly ns-type-error ns-show']//div[contains(text(),'Please enter skill and experience level')]");
+        private readonly By SkillSuccessMsg = By.XPath("//div[@class='ns-box ns-growl ns-effect-jelly ns-type-success ns-show']//div[contains(text(),'has been added to your skills')]");
 
-        //Duplicate Skill locators
+        private readonly By SkillErrorMsg = By.XPath("//div[contains(@class,'ns-type-error') or contains(text(),'invalid')]");
+
         private readonly By DupSkillErrMsg = By.XPath("//div[@class='ns-box-inner']");
 
 
-        // Definining Constructor
-        public SkillPage(IWebDriver driver) // Inject IWebDriver directly
+        // ------------------ Actions ------------------
+
+        // Navigate to Skill Tab
+        public void NavigateToSkillTab()
         {
-            _driver = driver;
-            _wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(30)); // 10-second timeout
-            
+            Console.WriteLine("Waiting for Skill tab to be clickable...");
+            wait.Until(ExpectedConditions.ElementToBeClickable(skillTab)).Click();
+            Console.WriteLine("Clicked on Skill tab.");
         }
 
-        public void SkillsTab()
+        // Add new skill and level
+        public void AddSkill(string skill, string level)
+        {
+            Console.WriteLine("Clicking 'Add New' for skill...");
+            wait.Until(ExpectedConditions.ElementToBeClickable(addNewSkillButton)).Click();
+
+            Console.WriteLine("Entering skill...");
+            var nameInput = wait.Until(ExpectedConditions.ElementIsVisible(addSkillTextbox));
+            nameInput.Clear();
+            nameInput.SendKeys(skill);
+
+            Console.WriteLine("Selecting level...");
+            var levelDropdown = wait.Until(ExpectedConditions.ElementToBeClickable(skillLevelDropdown));
+            new SelectElement(levelDropdown).SelectByText(level);
+
+            Console.WriteLine("Clicking 'Add' button...");
+            wait.Until(ExpectedConditions.ElementToBeClickable(skillSaveButton)).Click();
+        }
+
+        // Verify if the skill and level are displayed in the table
+        public bool IsSkillDisplayed(string skill, string level)
         {
             try
             {
-                // Click on Skills button
-                var skillsButtonElement = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(SkillsButton));
-                skillsButtonElement.Click();
+                Console.WriteLine("Checking if skill is displayed...");
+                var locator = By.XPath($"//td[normalize-space(text())='{skill}']/following-sibling::td[normalize-space(text())='{level}']");
+                return wait.Until(driver => driver.FindElement(locator)).Displayed;
             }
-            catch (Exception)
+            catch (WebDriverTimeoutException)
             {
-                Assert.Fail("Skills Button has not been found");
+                return false;
             }
         }
 
-        //Adding New Skill and Level
-        public void CreateSkillLevel(string skill, string level)
-        {   
-            //Create Skill and level through Add New
-            // Click Add New
-            try
-            {
-                // Click on Add New button
-                var addNewButtonElement = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(AddNewButton));
-                addNewButtonElement.Click();
-            }
-            catch (Exception)
-            {
-                Assert.Fail("Add New Button has not been found");
-            }
-
-            //Enter Skill
-            var SkillElement = _wait.Until(ExpectedConditions.ElementIsVisible(SkillField));
-            SkillElement.SendKeys(skill);
-
-            //Choose skill level from dropdown
-            var skillLevelElement = _wait.Until(d => d.FindElement(SkillLevelField));
-            SelectElement skillLevel = new SelectElement(skillLevelElement);
-            skillLevel.SelectByText(level);
-
-            //Click Add button
-
-            var AddButtonElement = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(AddButton));
-            var AddButtonElementClickable = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(AddButton));
-            AddButtonElementClickable.Click();
-            Thread.Sleep(2000);
-
-        }
         public void clickCancelButton()
         {
-            var CancelButtonElement = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(CancelButton));
-            var CancelButtonElementClickable = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(CancelButton));
+            var CancelButtonElement = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(CancelButton));
+            var CancelButtonElementClickable = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(CancelButton));
             CancelButtonElementClickable.Click();
             Thread.Sleep(3000);
         }
-        public string SkillListing()
-        {
-            var SavedSkill = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(AddedSkill));
-            return SavedSkill.Text;
-            
-        }
-        public string LevelListing()
-        {
-            var SavedLevel = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(AddedLevel));
-            return SavedLevel.Text;
-        }
 
-        public string SkillAddedSuccessMsg()
-        {
-            var SkillAddedMessage = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(SkillAddedMsg));
-            return SkillAddedMessage.Text;
-        }
+        //Update existing skill and level
 
-        //Updating existing Skill and Level
-
-        public void UpdateSkillAndLevel(string skill, string newSkill, string newLevel)
+        public void UpdateSkill(string oldSkill, string newSkill, string newLevel)
         {
             try
             {
-                // Find all rows in the table body
-                var skillRows = _wait.Until(d => d.FindElements(SkillRow));
+                var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
 
-                foreach (var row in skillRows)
+                // Wait until at least one skill row is present
+                wait.Until(d => d.FindElements(By.XPath("//table[@class='ui fixed table']//tbody/tr")).Count > 0);
+
+                var rows = driver.FindElements(By.XPath("//table[@class='ui fixed table']//tbody/tr"));
+                bool skillFound = false;
+
+                foreach (var row in rows)
                 {
                     var skillText = row.FindElement(By.XPath("./td[1]")).Text.Trim();
-                    if (skillText.Equals(skill, StringComparison.OrdinalIgnoreCase))
+
+                    Console.WriteLine($"Checking skill: '{skillText}'");
+
+                    if (skillText.Equals(oldSkill, StringComparison.OrdinalIgnoreCase))
                     {
-                        // Click the edit icon in that row
-                        var editButton = row.FindElement(By.XPath(".//i[contains(@class, 'outline write icon')]"));
-                        editButton.Click();
+                        skillFound = true;
 
-                        Thread.Sleep(1000); // Wait for input to appear
+                        // Click edit icon
+                        row.FindElement(By.XPath("./td[3]/span[1]/i")).Click();
 
-                        // Update the skill and level
-                        var skillElement = _wait.Until(ExpectedConditions.ElementIsVisible(SkillField));
-                        skillElement.Clear();
-                        skillElement.SendKeys(newSkill);
+                        // Wait for input fields to be visible
+                        wait.Until(ExpectedConditions.ElementIsVisible(By.Name("name")));
 
-                        // Choose skill level from dropdown
-                        var skillLevelElement = _wait.Until(d => d.FindElement(SkillLevelField));
-                        SelectElement skillLevel = new SelectElement(skillLevelElement);
-                        skillLevel.SelectByText(newLevel);
+                        // Input new skill
+                        var skillInput = row.FindElement(By.Name("name"));
+                        skillInput.Clear();
+                        skillInput.SendKeys(newSkill);
 
-                        // Click Add button
-                        var addButtonElement = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(AddButton));
-                        addButtonElement.Click();
+                        // Select new level
+                        var levelDropdown = new SelectElement(row.FindElement(By.Name("level")));
+                        levelDropdown.SelectByText(newLevel);
 
-                        Thread.Sleep(3000);
+                        // Click update
+                        row.FindElement(By.XPath("./td[3]/span/input[@value='Update']")).Click();
+
+                        // Wait for success toast (adjust selector if needed)
+                        wait.Until(ExpectedConditions.ElementIsVisible(By.ClassName("toast-message")));
 
                         return;
                     }
                 }
 
+                if (!skillFound)
+                    throw new Exception($"Skill '{oldSkill}' not found to update.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Test failed: " + ex.Message);
+                Assert.Fail("Failed to update skill: " + ex.Message);
             }
-        }
-        public string SkillUpdatedSuccessMsg()
-        {
-            var SKillUpdatedMessage = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(SkillUpdatedMsg));
-            return SKillUpdatedMessage.Text;
         }
 
         public bool IsSkillAndLevelPresent(string skill, string level)
         {
-            // Find all rows in the skill table
-            var rows = _driver.FindElements(SkillRow);
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
 
-            foreach (var row in rows)
+            for (int attempt = 0; attempt < 2; attempt++)
             {
-                var skillCell = row.FindElement(By.XPath("./td[1]"));
-                var levelCell = row.FindElement(By.XPath("./td[2]"));
-
-                // Check if the skill and level in the row match the provided values
-                if (skillCell.Text.Trim() == skill && levelCell.Text.Trim() == level)
+                try
                 {
-                    return true; // Found the matching skill and level
+                    var rows = wait.Until(d =>
+                    {
+                        var allRows = d.FindElements(SkillRow);
+                        return allRows.Any() ? allRows : null;
+                    });
+
+                    foreach (var row in rows)
+                    {
+                        var tds = row.FindElements(By.TagName("td"));
+                        if (tds.Count < 2)
+                            continue;
+
+                        var skillText = tds[0].Text.Trim();
+                        var levelText = tds[1].Text.Trim();
+
+                        Console.WriteLine($"Checking Row: {skillText} - {levelText}");
+
+                        if (skillText.Equals(skill, StringComparison.OrdinalIgnoreCase) &&
+                            levelText.Equals(level, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+                catch (StaleElementReferenceException)
+                {
+                    Thread.Sleep(1000);
+                }
+                catch (WebDriverTimeoutException ex)
+                {
+                    Console.WriteLine("Timeout while waiting for rows: " + ex.Message);
+                    return false;
                 }
             }
 
             return false;
         }
 
-
-
-        //Deleting SKill and Level
+        //Delete SKills
         public void DeleteAllSkills()
         {
-            WebDriverWait wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(30));
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+
             while (true)
             {
-                var deleteButtons = _driver.FindElements(SkillDeleteButton);
+                IReadOnlyCollection<IWebElement> deleteButtons;
+
+                try
+                {
+                    deleteButtons = driver.FindElements(skillDeleteButton);
+                }
+                catch (StaleElementReferenceException)
+                {
+                    continue;
+                }
 
                 if (deleteButtons.Count == 0)
                 {
                     Console.WriteLine("All skills are deleted.");
                     break;
                 }
-                int initialCount = deleteButtons.Count;
+
                 try
                 {
+                    int initialCount = deleteButtons.Count;
 
-                    wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(deleteButtons[0]));
-                    deleteButtons[0].Click();
+                    // Click the first delete button
+                    IWebElement deleteButton = wait.Until(
+                        SeleniumExtras.WaitHelpers.ExpectedConditions.ElementToBeClickable(deleteButtons.First()));
+                    deleteButton.Click();
+
+                    // Wait for toast message confirming deletion
+                    wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(
+                        By.XPath("//div[contains(text(),'has been deleted')]")));
+
+                    // Wait until a delete button disappears
                     wait.Until(driver =>
                     {
-                        var newDeleteButtons = driver.FindElements(SkillDeleteButton);
+                        var newDeleteButtons = driver.FindElements(skillDeleteButton);
                         return newDeleteButtons.Count < initialCount;
                     });
-
-                    Thread.Sleep(500);
                 }
                 catch (WebDriverTimeoutException ex)
                 {
                     Console.WriteLine("Timeout waiting for delete action to complete: " + ex.Message);
                     break;
                 }
+                catch (StaleElementReferenceException)
+                {
+                    continue;
+                }
             }
+
+            // Optional: refresh to stabilize UI after all deletions
+            driver.Navigate().Refresh();
+            Thread.Sleep(1000);
         }
 
         public bool AreSkillsPresent()
         {
-            var skillRows = _wait.Until(d => d.FindElements(SkillRow));
-            return skillRows.Any();
+            var deleteButtons = driver.FindElements(skillDeleteButton);
+            return deleteButtons.Count > 0;
         }
 
-        //Checking for duplicates in skill field
+        public void DeleteSpecificSkill(string skill)
+        {
+            try
+            {
+                Console.WriteLine($"🔍 Trying to delete skill: {skill}");
+                var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
+
+                bool deleted = false;
+                int retry = 0;
+
+                while (!deleted && retry < 5)
+                {
+                    // Re-fetch table rows each time to avoid stale elements
+                    var rows = driver.FindElements(SkillRow);
+                    foreach (var row in rows)
+                    {
+                        var skillText = row.FindElement(By.XPath("./td[1]")).Text.Trim();
+                        if (string.Equals(skillText, skill.Trim(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            var deleteBtn = row.FindElement(By.XPath(".//i[contains(@class, 'remove icon')]"));
+                            wait.Until(ExpectedConditions.ElementToBeClickable(deleteBtn)).Click();
+
+                            // Wait for toast confirmation
+                            wait.Until(ExpectedConditions.ElementIsVisible(skillDeletedMsg));
+
+                            Console.WriteLine($"Deleted skill: {skill}");
+                            deleted = true;
+                            break;
+                        }
+                    }
+
+                    retry++;
+                    if (!deleted)
+                    {
+                        Console.WriteLine($"🔁 Retry #{retry} for skill: {skill}");
+                        Thread.Sleep(1000); // Optional: Give DOM time to settle
+                    }
+                }
+
+                if (!deleted)
+                    Console.WriteLine($"Could not find or delete skill: {skill}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Exception while deleting skill '{skill}': {ex.Message}");
+            }
+        }
+
+        //**Checking for duplicates in skill field
         public string DuplicateSkillErrorMsg()
         {
-            var DuplicateSkillErrMsg = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(DupSkillErrMsg));
+            var DuplicateSkillErrMsg = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(DupSkillErrMsg));
 
             return DuplicateSkillErrMsg.Text;
 
@@ -253,7 +335,7 @@ namespace qa_dotnet_cucumber.Pages
         public bool IsDupSkillAndLevelPresent(string dupSkill, string dupLevel)
         {
             // Find all rows in the skill table
-            var rows = _driver.FindElements(SkillRow);
+            var rows = driver.FindElements(SkillRow);
 
             foreach (var row in rows)
             {
@@ -273,10 +355,10 @@ namespace qa_dotnet_cucumber.Pages
 
         }
 
-        //skill and Level field validation
+        //**Skill and Level field validation
         public string SkillLevelFieldValidationErrMsg()
         {
-            var ValidationErrMsg = _wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(DupSkillErrMsg));
+            var ValidationErrMsg = wait.Until(SeleniumExtras.WaitHelpers.ExpectedConditions.ElementIsVisible(DupSkillErrMsg));
 
             return ValidationErrMsg.Text;
 
